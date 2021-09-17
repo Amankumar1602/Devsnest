@@ -1,73 +1,139 @@
-Practice redis:
-Channel
+# PUB / SUBS & STREAMS IN REDIS
 
-# basic
+## SUBSCRIBE & PUBLISH
 
-    SUBCRIBE channelName                  // for creating channel
-    PUBLISH channelName "message"        // to send message to SUBCRIBE channel
+SUBSCRIBER : who accepts the message
 
-#for pattern channel
-PSUBCRIBE letter*
-// here we can give any pattern, for example
-PSUBCRIBE d* , in this case PUBLISH which ever channel start with d,
-data come here
-Stream
-Helps to store the history
+> how to subscribe
 
-Syntax:
-XADD streamName id key value
-example: 1. XADD mystream 1000 name Anna
+```
+SUBSCRIBE <channel>
+SUBSCRIBE devsnest
+```
 
-    2. XADD mystream * name Bert
-    // * give random id as timestamp
+PUBLISHER : who sends the message
 
-    3. XADD mystream MAXLEN 10000 * name Cathy
-    // if len is greater than maxelen
-    as a stack top data deleted and new data add in top
+> how to publish
 
-# to list all stream
+```
+PUBLISH <channel> <message>
+PUBLISH devsnest hello
+```
 
-    SCAN 0 TYPE stream
+> unsubscribe channel
 
-# list all stream data
+```
+UNSUBSCRIBE <channel>
+UNSUBSCRIBE devsnest
+```
 
-    XREAD COUNT dataCount STREAMS streamName startingIndex/startingID
+> subscribe channel with specific pattern
 
-example:
-XREAD COUNT 200 STREAMS mystream 0
+```
+PSUBSCRIBE <pattern>
+eg - PSUBSCRIBE d*       // it will subscribe all channels starting with 'd'
+```
 
-# control stream closeing time
+> unsubscribe channel with specific pattern
 
-    XREAD BLOCK timeInMS STREAMS streamName 0
+```
+PUNSUBSCRIBE <pattern>
+eg - PUNSUBSCRIBE d*
+```
 
-example:
-XREAD BLOCK 100000 STREAMS mystream 0
-// here if no data is sent 10s the stream is closed
+- <i> A publisher can have n number of subscribers </i>
 
-    XREAD BLOCK 0 STREAMS mystream 0
-    // here the stream never end
+### !! Above commands can be used between two channels and no history is saved !!
 
-    XREAD BLOCK 100000 STREAMS mystream $
-    // here it wait for 100000 consantly, if no data sent
-    the strem closed automatically
+<hr>
 
-# Loop
+## STREAMS
 
-    # forward
-    XRANGE streamName startingID endID
+### !! To save history of messages, we use stream !!
 
-example:
-XRANGE mystream 1000-0 1000-10
-// list all data in the range
+> adding values in stream
 
-    XRANGE mystream 1000-0 1000-10 COUNT 5
-    // list 5 data in the range
+```
+- XADD <name/key> <id> <field> <value>
+* XADD mystream 10000 name Dee
+```
 
-    XRANGE mystream + -
-    // if don't know the id, we can use this it's give all data
+```
+- XADD <name/key> < * -> id is default (timestamp)> <field> <value>
+* XADD mystream * name Rock
+```
 
-    XRANGE mystream + - COUNT 5
-    // give first 5 data
+```
+- XADD <name/key> <max length> <max length count> <id> <field> <value>
+* XADD mystream MAXLEN 10000 * name Rik
+```
 
-    ## reverse
-    XREVRANGE streamName + -
+> reading values in stream
+
+```
+- XREAD COUNT <count number> STREAMS <name/key> index(0)
+* XREAD COUNT 100 STREAMS mystream 0
+```
+
+```
+- XREAD COUNT <count numbers> STREAMS <name/key> <id>
+* XREAD COUNT 100 STREAMS mystream 10001
+```
+
+> creating publish subscribe like env in streams
+
+### (SUBSCRIBE)
+
+```
+- XREAD BLOCK <milliseconds> STREAMS <name/key> $
+* XREAD BLOCK 20000 STREAMS mystream $
+```
+
+- this will create the socket for 20s and wait for the publisher to send any message
+
+### (PUBLISH)
+
+```
+- XADD <name/key> <id> <field> <value>
+* XADD mystream * name Deepak
+```
+
+> displaying streams within a range
+
+```
+- XRANGE <name/key> <start id> <end id>
+* XRANGE mystream 10001-0 1630776428611-0
+```
+
+> displaying streams within a range with limit
+
+```
+- XRANGE <name/key> <start id> <end id> COUNT <count>
+* XRANGE mystream 10001-0 1630776428611-0 COUNT 5
+```
+
+- below is useful when you don't know the id
+
+> displaying all values using XRANGE
+
+```
+* XRANGE mystream - +
+```
+
+> displaying values with limit using XRANGE
+
+```
+* XRANGE mystream - + COUNT 5
+```
+
+> display streams in reverse order
+
+```
+* XREVRANGE mystream + -
+```
+
+> display stream in reverse order with a limit
+
+```
+* XREVRANGE mystream + - COUNT 4
+```
